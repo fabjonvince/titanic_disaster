@@ -8,7 +8,7 @@ from sklearn.ensemble import RandomForestClassifier, StackingClassifier
 from sklearn.feature_selection import RFECV, RFE
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score, confusion_matrix, classification_report
-from sklearn.model_selection import train_test_split, cross_val_score
+from sklearn.model_selection import train_test_split, cross_val_score, StratifiedKFold
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import LabelEncoder, StandardScaler
 import lightgbm as lgb
@@ -28,7 +28,7 @@ def download_data():
 
 def main():
 
-    # explore data analysis
+    # exploratory data analysis
     pd.set_option('display.max_columns', None) # set full view of columns
     train_data = pd.read_csv('data_titanic/train.csv')
     print(train_data.head())
@@ -112,28 +112,16 @@ def main():
     X_train, X_val, y_train, y_val = train_test_split(X, Y, test_size=0.2, random_state=42)
 
     # model training
-    # random forest
-    rf_model = RandomForestClassifier(random_state=42, n_estimators=200, max_depth=10)
-    rf_model.fit(X_train, y_train)
-    rf_pred = rf_model.predict(X_val)
-
-    #lightGMB
-    lgb_model = lgb.LGBMClassifier(random_state=42, n_estimators=500, learning_rate=0.01, num_leaves=10, verbose=-1)
-    lgb_model.fit(X_train, y_train)
-    lgb_pred = lgb_model.predict(X_val)
-
-    # stack
+    # stack RandomForest, LightGBM and XGBoost with Logistic Regression as final estimator
     stack_model = StackingClassifier(estimators=[
-        ('rf', rf_model),
-        ('lgb', lgb_model),
+        ('rf', RandomForestClassifier(random_state=42, n_estimators=200, max_depth=10)),
+        ('lgb', lgb.LGBMClassifier(random_state=42, n_estimators=500, learning_rate=0.01, num_leaves=10, verbose=-1)),
         ('xgb', XGBClassifier(random_state=42))
     ], final_estimator=LogisticRegression())
     stack_model.fit(X_train, y_train)
     stack_pred = stack_model.predict(X_val)
 
     # evaluation
-    print('Random Forest accuracy:', accuracy_score(y_val, rf_pred))
-    print('LightGBM accuracy:', accuracy_score(y_val, lgb_pred))
     print('Stacking accuracy:', accuracy_score(y_val, stack_pred))
     print('Stacking classification report:', classification_report(y_val, stack_pred))
 
